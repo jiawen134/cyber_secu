@@ -4,10 +4,10 @@ block_cipher = None
 
 a = Analysis(
     ['../server/server.py'],
-    pathex=[],
+    pathex=['../'],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['ClientThread', 'ClientThread.ClientThread'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

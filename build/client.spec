@@ -4,7 +4,7 @@ block_cipher = None
 
 a = Analysis(
     ['../client/client.py'],
-    pathex=[],
+    pathex=['../', '../Server'],
     binaries=[],
     datas=[],
     hiddenimports=[
@@ -12,7 +12,8 @@ a = Analysis(
         'PIL._tkinter_finder',
         'pyautogui',
         'ctypes',
-        'ctypes.wintypes'
+        'ctypes.wintypes',
+        'protocol'
     ],
     hookspath=[],
     hooksconfig={},
@@ -40,7 +41,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # Set to False to hide console window
+    console=True,  # Set to True to allow stdin access
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

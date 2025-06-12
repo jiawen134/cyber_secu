@@ -4,10 +4,10 @@ block_cipher = None
 
 a = Analysis(
     ['../rat_operator/rat_operator.py'],
-    pathex=[],
+    pathex=['../', '../Server'],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['ClientThread', 'ClientThread.ClientThread', 'protocol'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
