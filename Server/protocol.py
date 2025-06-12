@@ -60,6 +60,8 @@ class Commands:
     SCREENSHOT = "screenshot"
     POPUP = "popup"
     PHOTO = "photo"
+    KEYLOG_START = "keylog_start"
+    KEYLOG_STOP = "keylog_stop"
     QUIT = "quit"
 
 # Response types
@@ -68,4 +70,6 @@ class ResponseTypes:
     SCREENSHOT = "screenshot"
     POPUP = "popup"
     PHOTO = "photo"
+    KEYLOG_DATA = "keylog_data"
+    KEYLOG_STATUS = "keylog_status"
     ERROR = "error" 

