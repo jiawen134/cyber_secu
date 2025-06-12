@@ -59,6 +59,7 @@ class Commands:
     PING = "ping"
     SCREENSHOT = "screenshot"
     POPUP = "popup"
+    PHOTO = "photo"
     QUIT = "quit"
 
 # Response types
@@ -66,4 +67,5 @@ class ResponseTypes:
     PONG = "pong"
     SCREENSHOT = "screenshot"
     POPUP = "popup"
+    PHOTO = "photo"
     ERROR = "error" 

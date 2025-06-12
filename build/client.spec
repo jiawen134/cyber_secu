@@ -13,7 +13,9 @@ a = Analysis(
         'pyautogui',
         'ctypes',
         'ctypes.wintypes',
-        'protocol'
+        'protocol',
+        'cv2',
+        'modules.photo'
     ],
     hookspath=[],
     hooksconfig={},
