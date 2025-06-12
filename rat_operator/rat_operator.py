@@ -17,7 +17,7 @@ from protocol import Protocol, Commands, ResponseTypes
 class OperatorCLI:
     """Operator command line interface"""
     
-    def __init__(self, server_host='127.0.0.1', server_port=4444):
+    def __init__(self, server_host='172.20.10.2', server_port=4444):
         self.server_host = server_host
         self.server_port = server_port
         self.socket = None
@@ -236,7 +236,7 @@ class OperatorCLI:
 
 def main():
     parser = argparse.ArgumentParser(description='RAT Operator CLI')
-    parser.add_argument('--host', default='127.0.0.1', help='C2 server host')
+    parser.add_argument('--host', default='172.20.10.2', help='C2 server host')
     parser.add_argument('--port', type=int, default=4444, help='C2 server port')
     
     args = parser.parse_args()

